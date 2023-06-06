@@ -174,7 +174,7 @@
      <string/>
     </property>
    </widget>
-   <widget class="QPushButton" name="regesterButton">
+   <widget class="QPushButton" name="registerButton">
     <property name="geometry">
      <rect>
       <x>270</x>
