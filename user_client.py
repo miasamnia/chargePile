@@ -38,11 +38,10 @@ class MainWin(QMainWindow):
             #     'password': pwd,
             #     'request': 'register',
             # }
-            request=['register',name,pwd]
+            request=['__register',name,pwd]
             data=json.dumps(request)
             #tosend = name + '|' + pwd + '|1'
             dataSocket.send(data.encode())
-
             received = dataSocket.recv(BUFLEN).decode()
             rec=json.loads(received)
             if rec['status'] == 'account already exist!':

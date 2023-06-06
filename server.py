@@ -63,7 +63,7 @@ while True:
         pwd=request[2]
         print(received)
         # name, pwd, act = info.split('|')
-        if act == 'register':
+        if act == '__register':
             if name in os.listdir('data/users'):
                 dataSocket.send('account already exist!'.encode())
                 log.writelines('account already exist:{name}\n')
