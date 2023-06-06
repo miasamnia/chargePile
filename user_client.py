@@ -83,7 +83,8 @@ class MainWin(QMainWindow):
                 self.show_info.setAlignment(Qt.AlignHCenter)
             else:
                 self.show_info.setText("login succeed!")
-                self.loginButton.setvisible(False)
+                self.loginButton.setVisible(False)
+                self.registerButton.setVisible(False)
 
 
 if __name__ == "__main__":
