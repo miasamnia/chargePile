@@ -41,10 +41,40 @@ def checkroom(room):  # 8位字母数字组合
     if room.__len__() == 8:
         return room.isalnum()
     else:
-        return False;
+        return False
 
 
-# def checkCD(name):
+def register(name,pwd):
+    if name in os.listdir('data/users'):
+        log.writelines('account already exist:{name}\n')
+        log.flush()
+    else:
+        os.mkdir('data/users/' + name)
+        f = open('data/users/' + name + '/pwd', 'w')
+        f.writelines(pwd)
+        log.writelines('register succeed:{name}\n')
+        log.flush()
+        dataSocket.send('register succeed!'.encode())
+
+def login(name,pwd):
+    if (isuser == 0):  # 用户
+        legal = check_user(name, pwd)
+    else:
+        legal = check_admin(name, pwd)
+    if not legal:
+        dataSocket.send('password or account wrong!'.encode())
+        log.writelines('login failed\n')
+        log.flush()
+    else:
+        tosend = ['__LoginReturn', 1, 0]
+        #dataSocket.send(json.dumps(tosend).encode())
+        datasend(tosend)
+        log.writelines('login succeed:{name}\n')
+        log.flush()
+def datasend(data):
+    dataSocket.send(json.dumps(data).encode())
+    log.writelines(data)
+    log.flush()
 
 while True:
     try:
@@ -61,33 +91,15 @@ while True:
         act=request[0]
         name=request[1]
         pwd=request[2]
+        isuser=request[3]
         print(received)
         # name, pwd, act = info.split('|')
         if act == '__register':
-            if name in os.listdir('data/users'):
-                dataSocket.send('account already exist!'.encode())
-                log.writelines('account already exist:{name}\n')
-                log.flush()
-            else:
-                os.mkdir('data/users/' + name)
-                f = open('data/users/' + name + '/pwd', 'w')
-                f.writelines(pwd)
-                log.writelines('register succeed:{name}\n')
-                log.flush()
-                dataSocket.send('register succeed!'.encode())
-        elif act == 'login':
-            legal = check_user(name, pwd)
-            if not legal:
-                dataSocket.send('password or account wrong!'.encode())
-                log.writelines('login failed\n')
-                log.flush()
-            else:
-                dataSocket.send('login succeed!'.encode())
-                log.writelines('login succeed:{name}\n')
-                log.flush()
-        elif act == 'admin':
-            legal = check_admin()
-
+            register(name,pwd)
+        elif act == '__login':
+            login(name,pwd)
+        elif act=='__SubmitRequest':
+            print('unfinished')
     except Exception as e:
         log.writelines(f'ERROR: {e}\n')
         log.flush()

@@ -117,50 +117,10 @@
    <widget class="QLabel" name="leaderboard">
     <property name="geometry">
      <rect>
-      <x>20</x>
-      <y>10</y>
-      <width>171</width>
-      <height>231</height>
-     </rect>
-    </property>
-    <property name="font">
-     <font>
-      <pointsize>10</pointsize>
-      <weight>75</weight>
-      <bold>true</bold>
-     </font>
-    </property>
-    <property name="text">
-     <string/>
-    </property>
-   </widget>
-   <widget class="QLabel" name="eloboard">
-    <property name="geometry">
-     <rect>
-      <x>300</x>
-      <y>10</y>
-      <width>101</width>
-      <height>231</height>
-     </rect>
-    </property>
-    <property name="font">
-     <font>
-      <pointsize>10</pointsize>
-      <weight>75</weight>
-      <bold>true</bold>
-     </font>
-    </property>
-    <property name="text">
-     <string/>
-    </property>
-   </widget>
-   <widget class="QLabel" name="owninfo">
-    <property name="geometry">
-     <rect>
-      <x>200</x>
-      <y>100</y>
-      <width>91</width>
-      <height>111</height>
+      <x>40</x>
+      <y>160</y>
+      <width>351</width>
+      <height>181</height>
      </rect>
     </property>
     <property name="font">
@@ -194,6 +154,14 @@
      <string>注册</string>
     </property>
    </widget>
+   <zorder>leaderboard</zorder>
+   <zorder>in_act</zorder>
+   <zorder>in_pwd</zorder>
+   <zorder>account</zorder>
+   <zorder>password</zorder>
+   <zorder>show_info</zorder>
+   <zorder>loginButton</zorder>
+   <zorder>registerButton</zorder>
   </widget>
  </widget>
  <resources/>

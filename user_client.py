@@ -14,6 +14,7 @@ SERVER_PORT = 56789
 BUFLEN = 512
 CDTIME = 60#匹配成功一次的cd
 
+
 class MainWin(QMainWindow):
     def __init__(self):
         super().__init__()
@@ -38,7 +39,7 @@ class MainWin(QMainWindow):
             #     'password': pwd,
             #     'request': 'register',
             # }
-            request=['__register',name,pwd]
+            request=['__register',name,pwd,0]
             data=json.dumps(request)
             #tosend = name + '|' + pwd + '|1'
             dataSocket.send(data.encode())
@@ -59,18 +60,19 @@ class MainWin(QMainWindow):
         else:
             dataSocket = socket(AF_INET, SOCK_STREAM)
             dataSocket.connect((IP, SERVER_PORT))
-            request = {
-                'username': name,
-                'password': pwd,
-                'request': 'login',
-            }
+            # request = {
+            #     'username': name,
+            #     'password': pwd,
+            #     'request': 'login',
+            # }
+            request=['__login',name,pwd,0]
             data = json.dumps(request)
             # tosend = name + '|' + pwd + '|1'
             dataSocket.send(data.encode())
 
             received = dataSocket.recv(BUFLEN).decode()
             rec = json.loads(received)
-            if rec['status'] == 'password or account wrong!':
+            if rec[1] == 0:
                 self.show_info.setText(received)
                 self.show_info.setAlignment(Qt.AlignHCenter)
             else:
