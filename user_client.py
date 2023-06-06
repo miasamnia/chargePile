@@ -14,6 +14,11 @@ SERVER_PORT = 56789
 BUFLEN = 512
 CDTIME = 60#匹配成功一次的cd
 
+def datasend(data):
+    dataSocket = socket(AF_INET, SOCK_STREAM)
+    dataSocket.connect((IP, SERVER_PORT))
+    dataSocket.send(json.dumps(data).encode())
+    return dataSocket.recv(BUFLEN).decode()
 
 class MainWin(QMainWindow):
     def __init__(self):
@@ -32,8 +37,8 @@ class MainWin(QMainWindow):
             self.show_info.setText('不允许为空')
             self.show_info.setAlignment(Qt.AlignHCenter)
         else:
-            dataSocket = socket(AF_INET, SOCK_STREAM)
-            dataSocket.connect((IP, SERVER_PORT))
+            # dataSocket = socket(AF_INET, SOCK_STREAM)
+            # dataSocket.connect((IP, SERVER_PORT))
             # request = {
             #     'username': name,
             #     'password': pwd,
@@ -42,8 +47,9 @@ class MainWin(QMainWindow):
             request=['__register',name,pwd,0]
             data=json.dumps(request)
             #tosend = name + '|' + pwd + '|1'
-            dataSocket.send(data.encode())
-            received = dataSocket.recv(BUFLEN).decode()
+            # dataSocket.send(data.encode())
+            # received = dataSocket.recv(BUFLEN).decode()
+            received = datasend(data)
             rec=json.loads(received)
             if rec['status'] == 'account already exist!':
                 self.show_info.setText(received)
@@ -58,19 +64,19 @@ class MainWin(QMainWindow):
             self.show_info.setText('不允许为空')
             self.show_info.setAlignment(Qt.AlignHCenter)
         else:
-            dataSocket = socket(AF_INET, SOCK_STREAM)
-            dataSocket.connect((IP, SERVER_PORT))
+            # dataSocket = socket(AF_INET, SOCK_STREAM)
+            # dataSocket.connect((IP, SERVER_PORT))
             # request = {
             #     'username': name,
             #     'password': pwd,
             #     'request': 'login',
-            # }
+            # }            # data = json.dumps(request)
+            #             # # tosend = name + '|' + pwd + '|1'
+            #             # dataSocket.send(data.encode())
+            #
+            #             # received = dataSocket.recv(BUFLEN).decode()
             request=['__login',name,pwd,0]
-            data = json.dumps(request)
-            # tosend = name + '|' + pwd + '|1'
-            dataSocket.send(data.encode())
-
-            received = dataSocket.recv(BUFLEN).decode()
+            received=datasend(request)
             rec = json.loads(received)
             if rec[1] == 0:
                 self.show_info.setText(received)
