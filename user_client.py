@@ -1,9 +1,11 @@
 import sys
+import time
 from socket import *
 from PyQt5 import uic
 from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import QApplication, QMainWindow, QLineEdit, QWidget
 import json
+
 
 # IP = '101.42.228.137'
 IP = '127.0.0.1'
@@ -16,7 +18,7 @@ def datasend(data):
     dataSocket = socket(AF_INET, SOCK_STREAM)
     dataSocket.connect((IP, SERVER_PORT))
     dataSocket.send(json.dumps(data).encode())
-    return dataSocket.recv(BUFLEN).decode()
+    return json.loads(dataSocket.recv(BUFLEN).decode())
 
 
 class MainWin(QMainWindow):
@@ -63,11 +65,13 @@ class MainWin(QMainWindow):
                 self.show_info.setText("login succeed!")
                 self.loginButton.setVisible(False)
                 self.registerButton.setVisible(False)
+                subwin = SubWin(name)
                 subwin.show()
                 mainwin.setVisible(False)
 
 class SubWin(QMainWindow):
-    def __init__(self):
+    def __init__(self,name):
+        name=name
         super().__init__()
         uic.loadUi('subwindow.ui',self)
         self.chargemodeButton.setVisible(False)
@@ -77,10 +81,36 @@ class SubWin(QMainWindow):
         self.chargeamounttext.setVisible(False)
         self.modeselectiontext.setVisible(False)
         self.modeselectioncombo.setVisible(False)
+        self.confirmButton.setVisible(False)
+        self.chargereqButton.clicked.connect(self.chargereq(name))
+        self.chargemodeButton.clicked.connect(self.chargemode)
+        self.chargechangeButton.
+        self.stopchargingButton.
+
+    def chargereq(self,name):
+        self.chargeamountline.setVisible(True)
+        self.chargeamounttext.setVisible(True)
+        self.modeselectiontext.setVisible(True)
+        self.modeselectioncombo.setVisible(True)
+        self.confirmButton.setVisible(True)
+        chargeamount=float(self.chargeamountline.text())
+        chargemode=int(self.modeselectioncombo.text())
+        data=['__SubmitRequest',{'chargeMode':chargemode,'requestCharge':chargeamount,'creatTime':time.time()},name]
+        received=datasend(data)
+        if received[1]==0:
+            self.showinfo.setText('request failed!')
+        else:
+            billid=received[3]['BillId']
+            pos=received[3]['NO']
+            pile=received[3]['servingPile']
+            self.showinfo.setText(f'BillId:{billid}\n排队号:{pos}\n充电桩编号:{pile}')
+
+
+    def chargemode(self):
+
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
     mainwin = MainWin()
     mainwin.show()
-    subwin=SubWin()
     sys.exit(app.exec_())

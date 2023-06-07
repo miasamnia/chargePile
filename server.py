@@ -2,6 +2,7 @@ import os
 import time
 from socket import *
 import json
+import sqlite3
 
 IP = '0.0.0.0'
 PORT = 56789
@@ -75,6 +76,26 @@ def datasend(data):
     dataSocket.send(json.dumps(data).encode())
     log.writelines(data)
     log.flush()
+
+db=sqlite3.connect('data/charge.db')
+cdb=db.cursor()
+cdb.execute('''
+CREATE TABLE IF NOT EXISTS detailed_bill(
+DetailedBillNum int,
+USER_ID vchar(20),
+seq int,
+mode int,
+createTime int,
+pile int,
+charge float,
+startTime int,
+endTime int,
+chargeCost float,
+serveCost float,
+allCost float,
+other vchar(40),
+PRIMARY KEY(DetailedBillNum,USER_ID,seq)
+)''')
 
 while True:
     try:

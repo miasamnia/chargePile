@@ -237,6 +237,26 @@
      </property>
     </item>
    </widget>
+   <widget class="QPushButton" name="chargingButton_2">
+    <property name="geometry">
+     <rect>
+      <x>200</x>
+      <y>170</y>
+      <width>121</width>
+      <height>41</height>
+     </rect>
+    </property>
+    <property name="font">
+     <font>
+      <pointsize>14</pointsize>
+      <weight>75</weight>
+      <bold>true</bold>
+     </font>
+    </property>
+    <property name="text">
+     <string>确认提交</string>
+    </property>
+   </widget>
    <zorder>showinfo</zorder>
    <zorder>chargereqButton</zorder>
    <zorder>detailbillButton</zorder>
@@ -248,6 +268,7 @@
    <zorder>chargeamounttext</zorder>
    <zorder>modeselectiontext</zorder>
    <zorder>modeselectioncombo</zorder>
+   <zorder>chargingButton_2</zorder>
   </widget>
  </widget>
  <resources/>
