@@ -72,9 +72,15 @@ def login(name,pwd):
         datasend(tosend)
         log.writelines('login succeed:{name}\n')
         log.flush()
+
+def chargereq(name):
+    datasend(['__SubmitRequestReturn', 1, {'Billid': 1, 'USERID': '1', 'CreateTime':
+1684540800, 'chargeMode': 0, 'requestCharge': 1.0, 'Status': 0, 'startTime': -1,
+'endTime': -1, 'chargeCost': 0, 'serveCost': 0, 'charged': 0, 'NO': 'F1',
+'servingPile': -1, 'otherinfo': ''}])
 def datasend(data):
     dataSocket.send(json.dumps(data).encode())
-    log.writelines(data)
+    log.writelines(json.dumps(data))
     log.flush()
 
 db=sqlite3.connect('data/charge.db')
@@ -121,6 +127,8 @@ while True:
             login(name,pwd)
         elif act=='__SubmitRequest':
             print('unfinished')
+        elif act=='__SubmitRequest':
+            chargereq(name)
     except Exception as e:
         log.writelines(f'ERROR: {e}\n')
         log.flush()
