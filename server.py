@@ -27,6 +27,7 @@ fast_pile2={}
 slow_pile1={}
 slow_pile2={}
 slow_pile3={}
+piles=[fast_pile1,fast_pile2,slow_pile1,slow_pile2,slow_pile3]
 fast_waiting=[True,True]#充电区的等候位置
 slow_waiting=[True,True]
 f=0#等候区快充编号
@@ -114,42 +115,19 @@ def chargereq(name,chargemode,chargeamount):
             s=s+1
             no=f'S{s}'
         billid=billid+1
-        waiting_queue.put({'Billid': billid, 'USERID': name, 'CreateTime':
+        data=['__SubmitRequestReturn', 1, {'Billid': billid, 'USERID': name, 'CreateTime':
 time, 'chargeMode': chargemode, 'requestCharge': chargeamount, 'Status': 0, 'startTime': -1,
 'endTime': -1, 'chargeCost': 0, 'serveCost': 0, 'charged': 0, 'NO': no,
-'servingPile': -1, 'otherinfo': ''})
+'servingPile': -1, 'otherinfo': ''}]
+        waiting_queue.put(data)
+        datasend(data)
 
-def rmcharging(info):
-    global time
-    chargemode=info['chargeMode']
-    chargeamount=info['requestCharge']-(time-info['startTime'])*(chargemode%1*43+7)
-    if(waiting_queue.full()):#队列满了
-        datasend(['__SubmitRequestReturn', 0, {'Billid': 1, 'USERID': '1', 'CreateTime':
-1684540800, 'chargeMode': 0, 'requestCharge': 1.0, 'Status': 0, 'startTime': -1,
-'endTime': -1, 'chargeCost': 0, 'serveCost': 0, 'charged': 0, 'NO': 'F1',
-'servingPile': -1, 'otherinfo': ''}])
-        return
-    else:
-        global billid
-        global f
-        global s
-        no=''
-        if chargemode==0:#快充
-            f=f+1
-            no=f'F{f}'
-        else:
-            s=s+1
-            no=f'S{s}'
-        billid=billid+1
-        waiting_queue.put({'Billid': billid, 'USERID': name, 'CreateTime':
-time, 'chargeMode': chargemode, 'requestCharge': chargeamount, 'Status': 0, 'startTime': -1,
-'endTime': -1, 'chargeCost': 0, 'serveCost': 0, 'charged': 0, 'NO': no,
-'servingPile': -1, 'otherinfo': ''})
+
 def changemode(name):
+    global f
+    global s
     for waiting in waiting_queue:
         if waiting['USERID']==name:#在等待队列，直接改变
-            global f
-            global s
             if waiting['chargeMode']==0:
                 f=f-1
                 s=s+1
@@ -164,9 +142,27 @@ def changemode(name):
                 waiting['NO']=no
             return
     #没找到，已经在充电区
-    rmcharging()
-
-
+    global time
+    for pile in piles:
+        if pile!={} and pile['USERID']==name:
+            chargemode = pile['chargeMode']%1
+            chargeamount = pile['requestCharge'] - (time - pile['startTime'])/60 * (chargemode % 1 * 23 + 7)
+            if (waiting_queue.full()):  # 队列满了
+                datasend(['__ChangemodeReturn', 0])
+                return
+            else:
+                global billid
+                no = ''
+                if chargemode == 0:  # 快充
+                    f = f + 1
+                    no = f'F{f}'
+                else:
+                    s = s + 1
+                    no = f'S{s}'
+                billid = billid + 1
+                waiting_queue.put(pile)
+                pile={}
+            return
 
 
 def datasend(data):
@@ -200,7 +196,7 @@ def timer():
     timerr = threading.Timer(5, timer)
     timerr.start()
     global time
-    time = time + 1
+    time = time + 5
     print(time)
 
 
@@ -234,8 +230,10 @@ while True:
         elif act == '__SubmitRequest':
             content = request[1]
             name = request[2]
+            chargemode=content['chargeMode']
+            chargeamount=content['requestCharge']
             print('unfinished')
-            chargereq(name)
+            chargereq(name,chargemode,chargeamount)
     except Exception as e:
         log.writelines(f'ERROR: {e}\n')
         log.flush()

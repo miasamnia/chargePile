@@ -122,7 +122,7 @@ class SubWin(QMainWindow):
                 billid=received[2]['Billid']
                 pos=received[2]['NO']
                 pile=received[2]['servingPile']
-                self.showinfo.setText(f'BillId:{billid}\n排队号:{pos}\n充电桩编号:{pile}')
+                self.showinfo.setText(f'BillId:{billid}\n排队号:{pos}')
         elif self.req==2:#改变模式
             data = ['__Changemode', self.name]
             received = datasend(data)
