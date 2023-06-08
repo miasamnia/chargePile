@@ -164,7 +164,17 @@ def changemode(name):
                 pile={}
             return
 
-
+def ShowDetailedBill(bill_id):
+    conn = sqlite3.connect('data/charge.db')
+    cursor = conn.cursor()
+    query = f"SELECT * FROM detailed_bill WHERE DetailedBillNum = {bill_id}"
+    cursor.execute(query)
+    result = cursor.fetchall()
+    for row in result:
+        tosend=['__ShowDetailedBillReturn', [row]]
+    datasend(tosend)
+    conn.close()
+        
 def datasend(data):
     dataSocket.send(json.dumps(data).encode())
     log.writelines(json.dumps(data))
@@ -234,6 +244,9 @@ while True:
             chargeamount=content['requestCharge']
             print('unfinished')
             chargereq(name,chargemode,chargeamount)
+        elif act == '__ShowDetailedBill':
+            billid = request[1]
+            ShowDetailedBill(billid)
     except Exception as e:
         log.writelines(f'ERROR: {e}\n')
         log.flush()
