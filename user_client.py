@@ -17,8 +17,10 @@ CDTIME = 60  # 匹配成功一次的cd
 def datasend(data):
     dataSocket = socket(AF_INET, SOCK_STREAM)
     dataSocket.connect((IP, SERVER_PORT))
+    print(json.dumps(['__SubmitRequest', {'chargeMode': 0, 'requestCharge': 11.0, 'creatTime': 1686205442.2987475}, '1']))
     dataSocket.send(json.dumps(data).encode())
-    return dataSocket.recv(BUFLEN).decode()
+    return json.loads(dataSocket.recv(BUFLEN).decode())
+
 
 
 class MainWin(QMainWindow):
@@ -49,6 +51,7 @@ class MainWin(QMainWindow):
                 self.show_info.setAlignment(Qt.AlignHCenter)
             else:
                 self.show_info.setText("register succeed!\nyou may login now")
+                self.show_info.setAlignment(Qt.AlignHCenter)
 
     def login(self):
         name = self.in_act.text().lower()
@@ -59,12 +62,12 @@ class MainWin(QMainWindow):
         else:
             request = ['__login', name, pwd, 0]
             received = datasend(request)
-            rec = json.loads(received)
-            if rec[1] == 0:
-                self.show_info.setText(received)
+            if received[1] == 0:
+                self.show_info.setText('login failed!')
                 self.show_info.setAlignment(Qt.AlignHCenter)
             else:
                 self.show_info.setText("login succeed!")
+                self.show_info.setAlignment(Qt.AlignHCenter)
                 self.loginButton.setVisible(False)
                 self.registerButton.setVisible(False)
                 mainwin.setVisible(False)
@@ -112,12 +115,13 @@ class SubWin(QMainWindow):
             chargemode=int(self.modeselectioncombo.currentIndex())
             data=['__SubmitRequest',{'chargeMode':chargemode,'requestCharge':chargeamount,'creatTime':time.time()},self.name]
             received=datasend(data)
+            self.chargereqButton.setVisible(True)
             if received[1]==0:
                 self.showinfo.setText('request failed!')
             else:
-                billid=received[3]['BillId']
-                pos=received[3]['NO']
-                pile=received[3]['servingPile']
+                billid=received[2]['Billid']
+                pos=received[2]['NO']
+                pile=received[2]['servingPile']
                 self.showinfo.setText(f'BillId:{billid}\n排队号:{pos}\n充电桩编号:{pile}')
         elif self.req==2:#改变模式
             data = ['__Changemode', self.name]

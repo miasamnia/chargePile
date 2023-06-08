@@ -45,7 +45,7 @@ def checkroom(room):  # 8位字母数字组合
         return False
 
 
-def register(name,pwd):
+def register(name, pwd):
     if name in os.listdir('data/users'):
         log.writelines('account already exist:{name}\n')
         log.flush()
@@ -57,7 +57,8 @@ def register(name,pwd):
         log.flush()
         dataSocket.send('register succeed!'.encode())
 
-def login(name,pwd):
+
+def login(name, pwd):
     if (isuser == 0):  # 用户
         legal = check_user(name, pwd)
     else:
@@ -68,23 +69,27 @@ def login(name,pwd):
         log.flush()
     else:
         tosend = ['__LoginReturn', 1, 0]
-        #dataSocket.send(json.dumps(tosend).encode())
+        # dataSocket.send(json.dumps(tosend).encode())
         datasend(tosend)
         log.writelines('login succeed:{name}\n')
         log.flush()
 
+
 def chargereq(name):
     datasend(['__SubmitRequestReturn', 1, {'Billid': 1, 'USERID': '1', 'CreateTime':
-1684540800, 'chargeMode': 0, 'requestCharge': 1.0, 'Status': 0, 'startTime': -1,
-'endTime': -1, 'chargeCost': 0, 'serveCost': 0, 'charged': 0, 'NO': 'F1',
-'servingPile': -1, 'otherinfo': ''}])
+        1684540800, 'chargeMode': 0, 'requestCharge': 1.0, 'Status': 0, 'startTime': -1,
+                                           'endTime': -1, 'chargeCost': 0, 'serveCost': 0, 'charged': 0, 'NO': 'F1',
+                                           'servingPile': -1, 'otherinfo': ''}])
+
+
 def datasend(data):
     dataSocket.send(json.dumps(data).encode())
     log.writelines(json.dumps(data))
     log.flush()
 
-db=sqlite3.connect('data/charge.db')
-cdb=db.cursor()
+
+db = sqlite3.connect('data/charge.db')
+cdb = db.cursor()
 cdb.execute('''
 CREATE TABLE IF NOT EXISTS detailed_bill(
 DetailedBillNum int,
@@ -115,19 +120,23 @@ while True:
         # name = request['username']
         # pwd = request['password']
         # act = request['request']
-        act=request[0]
-        name=request[1]
-        pwd=request[2]
-        isuser=request[3]
+        act = request[0]
         print(received)
         # name, pwd, act = info.split('|')
         if act == '__register':
-            register(name,pwd)
+            name = request[1]
+            pwd = request[2]
+            isuser = request[3]
+            register(name, pwd)
         elif act == '__login':
-            login(name,pwd)
-        elif act=='__SubmitRequest':
+            name = request[1]
+            pwd = request[2]
+            isuser = request[3]
+            login(name, pwd)
+        elif act == '__SubmitRequest':
+            content = request[1]
+            name = request[2]
             print('unfinished')
-        elif act=='__SubmitRequest':
             chargereq(name)
     except Exception as e:
         log.writelines(f'ERROR: {e}\n')
