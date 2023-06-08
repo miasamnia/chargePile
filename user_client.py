@@ -158,7 +158,6 @@ class SubWin(QMainWindow):
         self.showinfo.setText('detailed bill stored in Dbill.csv')
         with open('Dbill.csv','w')as f:
             f.write(received)
-
     def chargemode(self):
         self.req=2
         self.confirmButton.setVisible(True)
