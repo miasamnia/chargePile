@@ -134,7 +134,7 @@ class SubWin(QMainWindow):
             chargeamount = float(self.chargeamountline.text())
             data = ['__Changerequest', self.name, chargeamount]
             received = datasend(data)
-            if received != 1:
+            if received[1] != 1:
                 self.showinfo.setText('failed!')
             else:
                 self.showinfo.setText('succeed!')
@@ -161,7 +161,7 @@ class SubWin(QMainWindow):
         received=datasend(data)
         self.showinfo.setText('detailed bill stored in Dbill.csv')
         with open('Dbill.csv','w')as f:
-            f.write(received)
+            f.write(str(received[1]))
     def chargemode(self):
         self.req=2
         self.confirmButton.setVisible(True)
@@ -171,7 +171,7 @@ class SubWin(QMainWindow):
     def stopcharging(self):
         data=['__StopCharge', self.name]
         received=datasend(data)
-        if received!=1:
+        if received[1]!=1:
             self.showinfo.setText('failed!')
         else:
             self.showinfo.setText('succeed!')
@@ -186,10 +186,12 @@ class SubWin(QMainWindow):
     def charging(self):
         data=['__GetRIinfo', self.name]
         received=datasend(data)
-        self.showinfo.setText('detailed bill stored in Dbill.csv')
-        with open('Dbill.csv','w')as f:
-            f.write(received)
-
+        if data[1]!=0:
+            self.showinfo.setText('detailed bill stored in charging.csv')
+            with open('charging.csv','w')as f:
+                f.write(str(received[2]))
+        else:
+            self.showinfo.setText('no charging bill')
     #def chargemode(self):
 
 
