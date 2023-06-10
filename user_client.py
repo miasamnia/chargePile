@@ -17,7 +17,6 @@ CDTIME = 60  # 匹配成功一次的cd
 def datasend(data):
     dataSocket = socket(AF_INET, SOCK_STREAM)
     dataSocket.connect((IP, SERVER_PORT))
-    print(json.dumps(['__SubmitRequest', {'chargeMode': 0, 'requestCharge': 11.0, 'creatTime': 1686205442.2987475}, '1']))
     dataSocket.send(json.dumps(data).encode())
     return json.loads(dataSocket.recv(BUFLEN).decode())
 

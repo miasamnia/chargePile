@@ -16,6 +16,19 @@ listenSocket = socket(AF_INET, SOCK_STREAM)
 listenSocket.bind((IP, PORT))
 listenSocket.listen(5)
 
+pile_info = []
+for pile in os.listdir('data/piles'):
+    info = open('data/piles/' + pile, 'r+')
+    data = info.read().strip('(').strip(')').split(',')
+    i = 0
+    for thing in data:
+        if i < 5:
+            data[i] = int(thing)
+        else:
+            data[i] = float(thing)
+        i += 1
+    pile_info.append(data)
+
 # fast_pile = [True, True]  # 快充桩是否忙
 # slow_pile = [False, False, False]  # 慢充是否忙
 # fast_pile1={}
@@ -33,12 +46,15 @@ waiting_list = []  # 等候区车辆信息
 f = 0  # 等候区快充编号
 s = 0  # 等候区慢充编号
 time = 5 * 60 + 55
-bill=open('data/bill_id','r+')
-billid=int(bill.read())
+bill = open('data/bill_id', 'r+')
+billid = int(bill.read()) + 1
 bill.seek(0)
+bill.write(str(billid))
 
 db = sqlite3.connect('data/charge.db')
 cdb = db.cursor()
+
+
 # cdb.execute('''
 # CREATE TABLE IF NOT EXISTS detailed_bill(
 # DetailedBillNum int,
@@ -131,6 +147,7 @@ def chargereq(name, chargemode, chargeamount):
         no = f'F{f}'
         billid = billid + 1
         bill.seek(0)
+        bill.write(str(billid))
         data = ['__SubmitRequestReturn', 1, {'Billid': billid, 'USERID': name, 'CreateTime':
             time, 'chargeMode': chargemode, 'requestCharge': chargeamount, 'Status': 0, 'startTime': -1,
                                              'endTime': -1, 'chargeCost': 0, 'serveCost': 0, 'charged': 0, 'NO': no,
@@ -152,6 +169,93 @@ def chargereq(name, chargemode, chargeamount):
         datasend(data)
 
 
+def calculate_charging_cost(start_minutes, end_minutes, power_mode):
+    # # 时间转换为分钟
+    # start_hour, start_minute = map(int, start_time.split(':'))
+    # end_hour, end_minute = map(int, end_time.split(':'))
+    # start_minutes = start_hour * 60 + start_minute
+    # end_minutes = end_hour * 60 + end_minute
+    if end_minutes < start_minutes:
+        total_cost = calculate_charging_cost(start_minutes, 1440, power_mode) + calculate_charging_cost(0, end_minutes,
+                                                                                                        power_mode)
+        return total_cost
+    else:
+        # 计算总时间（分钟）
+        total_minutes = end_minutes - start_minutes
+
+        # 根据充电功率模式确定充电功率
+        if power_mode == 'F':
+            charging_power = 30
+        elif power_mode == 'T':
+            charging_power = 7
+        else:
+            return "Invalid charging power mode."
+
+        # 定义峰时、平时、谷时时间段（分钟）
+        peak1_start = 10 * 60
+        peak1_end = 15 * 60
+        peak2_start = 18 * 60
+        peak2_end = 21 * 60
+        off_peak1_start = 7 * 60
+        off_peak1_end = 10 * 60
+        off_peak2_start = 15 * 60
+        off_peak2_end = 18 * 60
+        off_peak3_start = 21 * 60
+        off_peak3_end = 23 * 60
+        valley1_start = 23 * 60
+        valley1_end = 24 * 60
+        valley2_start = 0 * 60
+        valley2_end = 7 * 60
+
+        # # 峰时、平时、谷时的时间（分钟）
+        # peak1_time = 0
+        # peak2_time = 0
+        # off_peak1_time = 0
+        # off_peak2_time = 0
+        # off_peak3_time = 0
+        # valley1_time = 0
+        # valley2_time = 0
+        #
+        # # 峰时、平时、谷时总时间（小时
+        # peak_hours = 0
+        # off_peak_hours = 0
+        # valley_hours = 0
+
+        # 计算峰时、平时、谷时的时间（分钟）
+        peak1_time = max(0, min(end_minutes, peak1_end) - max(start_minutes, peak1_start))
+        peak2_time = max(0, min(end_minutes, peak2_end) - max(start_minutes, peak2_start))
+        off_peak1_time = max(0, min(end_minutes, off_peak1_end) - max(start_minutes, off_peak1_start))
+        off_peak2_time = max(0, min(end_minutes, off_peak2_end) - max(start_minutes, off_peak2_start))
+        off_peak3_time = max(0, min(end_minutes, off_peak3_end) - max(start_minutes, off_peak3_start))
+        valley1_time = max(0, min(end_minutes, valley1_end) - max(start_minutes, valley1_start))
+        valley2_time = max(0, min(end_minutes, valley2_end) - max(start_minutes, valley2_start))
+
+        # 转换为小时
+        peak_hours = (peak1_time + peak2_time) / 60
+        off_peak_hours = (off_peak1_time + off_peak2_time + off_peak3_time) / 60
+        valley_hours = (valley1_time + valley2_time) / 60
+
+        # 计算充电度数
+        charging_kWh = charging_power * total_minutes / 60
+
+        # 计算充电费用
+        peak_price = 1.0  # 峰时电价（元/度）
+        off_peak_price = 0.7  # 平时电价（元/度）
+        valley_price = 0.4  # 谷时电价（元/度）
+        serv_price = 0.8  # 服务费单价（元/度）
+
+        charging_cost = peak_hours * peak_price * charging_power + off_peak_hours * off_peak_price * charging_power + valley_hours * valley_price * charging_power
+
+        # 计算服务费用
+        service_cost = serv_price * charging_kWh
+
+        # 计算总费用
+        total_cost = charging_cost + service_cost
+
+        # print(peak_hours, off_peak_hours, valley_hours, charging_kWh, charging_cost, service_cost)
+        return charging_cost, service_cost, total_cost
+
+
 # 未测试
 # 电冲完/用户在充电区改变充电模式或电量，调用此函数将其清除，并将目前的结果存入数据库
 def rm_from_pile(name):  # 从充电区移除，成功返回True，没找到返回False
@@ -161,11 +265,12 @@ def rm_from_pile(name):  # 从充电区移除，成功返回True，没找到返�
     for i in range(5):
         if piles[i] != {} and name == piles[i]['USERID']:
             global cdb
-            #
-            # 这里是计算花了多少钱
-            #
-            piles[i]['chargeCost'] = 0
-            piles[i]['serverCost'] = 0
+            if piles[i]['chargeMode'] == 0:
+                mode = 'F'
+            else:
+                mode = 'S'
+            piles[i]['chargeCost'], piles[i]['serverCost'], total = calculate_charging_cost(piles[i]['startTime'], time,
+                                                                                            mode)
             piles[i]['servingPile'] = -1
             piles[i]['endTime'] = time
             data = list(piles[i].values())
@@ -180,13 +285,16 @@ def rm_from_pile(name):  # 从充电区移除，成功返回True，没找到返�
                         'endTime,chargeCost,serveCost,allCost,other) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)',
                         data)
             db.commit()
-            piles[i]={}
+            pile_info[i][1] += 1
+            pile_info[i][2] += piles[i]['startTime']
+            pile
+            piles[i] = {}
             if i <= 1:
                 fast_pile[i] = True
             else:
                 slow_pile[i - 2] = True
             return
-        if pile_waiting[i]!={}and name == pile_waiting[i]['USERID']:
+        if pile_waiting[i] != {} and name == pile_waiting[i]['USERID']:
             pile_waiting[i] = {}
             if i <= 1:
                 fast_waiting[i] = True
@@ -225,7 +333,6 @@ def changemode(name):
                     s = s + 1
                     no = f'S{s}'
                     billid = billid + 1
-                    bill.seek(0)
                     bill.seek(0)
                     bill.write(str(billid))
                     car['Billid'] = billid
@@ -377,44 +484,46 @@ def showdetailedbill(user_id):
     datasend(['__ShowDetailedBillReturn', output])
     conn.close()
 
+
 def showcharginginfo(name):
     for car in waiting_list:
-        if car!={}and car['USERID']==name:
-            datasend(['__SubmitRequestReturn', 1,car])
+        if car != {} and car['USERID'] == name:
+            datasend(['__SubmitRequestReturn', 1, car])
             return
     for car in pile_waiting:
         if car != {} and car['USERID'] == name:
             datasend(['__SubmitRequestReturn', 1, car])
             return
     for car in piles:
-        if car!={}and car['USERID']==name:
-            datasend(['__SubmitRequestReturn', 1,car])
+        if car != {} and car['USERID'] == name:
+            datasend(['__SubmitRequestReturn', 1, car])
             return
-    datasend(['__SubmitRequestReturn', 0,[]])
+    datasend(['__SubmitRequestReturn', 0, []])
+
 
 def stopcharging(name):
-    i=0
+    i = 0
     for car in waiting_list:
-        if car!={}and car['USERID']==name:
-            waiting_list[i]={}
+        if car != {} and car['USERID'] == name:
+            waiting_list[i] = {}
             datasend(['__StopChargeReturn', 1])
             return
-        i+=1
-    i=0
+        i += 1
+    i = 0
     for car in pile_waiting:
         if car != {} and car['USERID'] == name:
             rm_from_pile(name)
             datasend(['__StopChargeReturn', 1])
             return
-        i+=1
-    i=0
+        i += 1
+    i = 0
     for car in piles:
-        if car!={}and car['USERID']==name:
+        if car != {} and car['USERID'] == name:
             rm_from_pile(name)
             datasend(['__StopChargeReturn', 1])
             return
-        i+=1
-    datasend(['__SubmitRequestReturn', 0,[]])
+        i += 1
+    datasend(['__SubmitRequestReturn', 0, []])
 
 
 # 所有发送信息调用这个函数，data就是要发送的列表和文档里格式一样，不做别的处理
@@ -469,19 +578,19 @@ def timer():
     for pile in fast_waiting:
         if pile:  # 充电区等候空闲
             for car in waiting_list:
-                if car!={}and car['chargeMode'] == 0:
+                if car != {} and car['chargeMode'] == 0:
                     fast_waiting[i] = False
                     pile_waiting[i] = car
-                    waiting_list[i]={}
+                    waiting_list[i] = {}
                     break
         i = i + 1
     for pile in slow_waiting:
         if pile:  # 充电区等候空闲
             for car in waiting_list:
-                if car!={}and car['chargeMode'] == 1:
+                if car != {} and car['chargeMode'] == 1:
                     slow_waiting[i - 2] = False
                     pile_waiting[i] = car
-                    waiting_list[i]={}
+                    waiting_list[i] = {}
                     break
         i += 1
 
@@ -501,17 +610,18 @@ def timer_clock():
     # 下面改变所有桩的剩余电量
     for car in piles:
         if car != {}:
-            car['charged'] += ((car['chargeMode'] % 1) * 23 + 7) / 6
+            car['charged'] += (((car['chargeMode'] + 1) % 2) * 23 + 7) / 6
             if car['charged'] >= car['requestCharge']:
                 for i in range(5):
                     if piles[i] != {} and car['USERID'] == piles[i]['USERID']:
                         conn = sqlite3.connect('data/charge.db')
                         cursor = conn.cursor()
-                        #
-                        # 这里是计算花了多少钱
-                        #
-                        piles[i]['chargeCost'] = 0
-                        piles[i]['serverCost'] = 0
+                        if piles[i]['chargeMode'] == 0:
+                            mode = 'F'
+                        else:
+                            mode = 'S'
+                        piles[i]['chargeCost'], piles[i]['serverCost'], total = calculate_charging_cost(
+                            piles[i]['startTime'], time, mode)
                         piles[i]['servingPile'] = -1
                         piles[i]['endTime'] = time
                         data = list(piles[i].values())
@@ -534,7 +644,7 @@ def timer_clock():
                         else:
                             slow_pile[i - 2] = True
                         return
-                    if pile_waiting[i]!={}and name == pile_waiting[i]['USERID']:
+                    if pile_waiting[i] != {} and name == pile_waiting[i]['USERID']:
                         pile_waiting[i] = {}
                         if i <= 1:
                             fast_waiting[i] = True
@@ -593,11 +703,11 @@ while True:
         elif act == '__ShowDetailedBill':
             user_id = request[1]
             showdetailedbill(user_id)
-        elif act=='__GetRIinfo':
-            name=request[1]
+        elif act == '__GetRIinfo':
+            name = request[1]
             showcharginginfo(name)
-        elif act=='__StopCharge':
-            name=request[1]
+        elif act == '__StopCharge':
+            name = request[1]
             stopcharging(name)
     except Exception as e:
         log.writelines(f'ERROR: {e}\n')
