@@ -337,6 +337,9 @@ def chargechange(name,chargeamount):
             datasend(['__ChangerequestReturn', 1])
             return
     datasend(['__ChangerequestReturn',0])
+
+# 未测试
+# 根据用户id查其名下所有充电信息，前端需要根据这些信息生成详单
 def showdetailedbill(user_id):
     conn = sqlite3.connect('data/charge.db')
     cursor = conn.cursor()
@@ -349,6 +352,11 @@ def showdetailedbill(user_id):
     datasend(output)
     conn.close()
 
+# 未测试
+# 查充电桩数量（列表元素数量）
+def getpilennum():
+    pilenum = len(fast_pile) + len(slow_pile)
+    datasend(['__GetPilenReturn', pilenum])
 
 # 所有发送信息调用这个函数，data就是要发送的列表和文档里格式一样，不做别的处理
 def datasend(data):
@@ -471,6 +479,8 @@ while True:
         elif act == '__ShowDetailedBill':
             user_id = request[1]
             showdetailedbill(user_id)
+        elif act == '__GetPilen':
+            getpilennum()
     except Exception as e:
         log.writelines(f'ERROR: {e}\n')
         log.flush()
