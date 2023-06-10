@@ -126,7 +126,7 @@ class SubWin(QMainWindow):
         elif self.req==2:#改变模式
             data = ['__Changemode', self.name]
             received = datasend(data)
-            if received != 1:
+            if received[1] != 1:
                 self.showinfo.setText('failed!')
             else:
                 self.showinfo.setText('succeed!')

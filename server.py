@@ -4,7 +4,6 @@ from socket import *
 import json
 import sqlite3
 import threading
-import queue
 
 IP = '0.0.0.0'
 PORT = 56789
@@ -42,7 +41,6 @@ cdb.execute('''
 CREATE TABLE IF NOT EXISTS detailed_bill(
 DetailedBillNum int,
 USER_ID vchar(20),
-seq int,
 mode int,
 createTime int,
 pile int,
@@ -53,7 +51,7 @@ chargeCost float,
 serveCost float,
 allCost float,
 other vchar(40),
-PRIMARY KEY(DetailedBillNum,USER_ID,seq)
+PRIMARY KEY(DetailedBillNum,USER_ID)
 )''')
 
 
@@ -115,7 +113,7 @@ def login(name, pwd):
 # 如果等待区满，返回错误，否则加入等待区
 def chargereq(name, chargemode, chargeamount):
     global waiting_list
-    if (waiting_list.count() == 6):  # 队列满了
+    if (len(waiting_list) == 6):  # 队列满了
         datasend(['__SubmitRequestReturn', 0, {'Billid': 1, 'USERID': '1', 'CreateTime':
             1684540800, 'chargeMode': 0, 'requestCharge': 1.0, 'Status': 0, 'startTime': -1,
                                                'endTime': -1, 'chargeCost': 0, 'serveCost': 0, 'charged': 0, 'NO': 'F1',
@@ -149,34 +147,112 @@ def chargereq(name, chargemode, chargeamount):
         datasend(data)
 
 
-# 未完成：
-# 电冲完/用户在充电区改变充电模式或电量，调用此函数将其移出，并将目前的结果存入数据库
+# 未测试
+# 电冲完/用户在充电区改变充电模式或电量，调用此函数将其清除，并将目前的结果存入数据库
 def rm_from_pile(name):  # 从充电区移除，成功返回True，没找到返回False
     global piles
     global time
-    for pile in piles:
-        if name == pile['USERID']:
+    global pile_waiting
+    for i in range(5):
+        if piles[i]!={}and name == piles[i]['USERID']:
             global cdb
             #
             # 这里是计算花了多少钱
             #
-            pile['chargeCost'] = 0
-            pile['serverCost'] = 0
-            pile['servingPile'] = -1
-            pile['endTime'] = time
-            cdb.execute('INSERT INTO table_name (name, age) VALUES (?, ?)', data)
+            piles[i]['chargeCost'] = 0
+            piles[i]['serverCost'] = 0
+            piles[i]['servingPile'] = -1
+            piles[i]['endTime'] = time
+            data=list(piles[i].values())
+            data.insert(4,i)
+            data[11]=data[9]+data[10]
+            del data[-1]
+            del data[-2]
+            del data[-2]
+            del data[6]
 
+            cdb.execute('INSERT INTO detailed_bill (DetailedBillNum,USER_ID,createTime,mode,pile,charge,startTime,'
+                        'endTime,chargeCost,serveCost,allCost,other) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)',
+                        data)
+            piles[i]={}
+            if i <=1:
+                fast_pile[i]=True
+            else:
+                slow_pile[i-2]=True
+            return
+        if name == pile_waiting[i]['USERID']:
+            pile_waiting = {}
+            if i <= 1:
+                fast_waiting[i] = True
+            else:
+                slow_waiting[i - 2] = True
+            return
+        i+=1
 
-# 未完成
+# 未测试
 # 改变充电模式
 # 如果在等候区，直接修改。
-# 如果在充电区，停止充电插入等待区。如果等待区满，返回错误
+# 如果在充电区，停止充电插入等待区。如果等待区满，不停止充电直接返回改变失败
 def changemode(name):
     global f
     global s
     global waiting_list
+    global billid
+    global tim
+    for car in piles:
+        if car!={}and car['USERID']==name:#正在充电
+            if len(waiting_list)<6:
+                rm_from_pile(name)
+                if car['chargeMode']==1:#要改为快
+                    f = f + 1
+                    no = f'F{f}'
+                    billid = billid + 1
+                    car['Billid']=billid
+                    car['CreateTime']=time
+                    car['chargeMode']=0
+                    car['NO']=no
+                    waiting_list.append(car)
+                else:
+                    s = s + 1
+                    no = f'S{s}'
+                    billid = billid + 1
+                    car['Billid'] = billid
+                    car['CreateTime'] = time
+                    car['chargeMode'] = 1
+                    car['NO'] = no
+                    waiting_list.append(car)
+                datasend(['__ChangemodeReturn', 1])
+            else:
+                datasend(['__ChangemodeReturn', 0])
+            return
+    for car in pile_waiting:
+        if car!={}and car['USERID']==name:#正在充电
+            if len(waiting_list)<6:
+                rm_from_pile(name)
+                if car['chargeMode'] == 1:  # 要改为快
+                    f = f + 1
+                    no = f'F{f}'
+                    billid = billid + 1
+                    car['Billid'] = billid
+                    car['CreateTime'] = time
+                    car['chargeMode'] = 0
+                    car['NO'] = no
+                    waiting_list.append(car)
+                else:
+                    s = s + 1
+                    no = f'S{s}'
+                    billid = billid + 1
+                    car['Billid'] = billid
+                    car['CreateTime'] = time
+                    car['chargeMode'] = 1
+                    car['NO'] = no
+                    waiting_list.append(car)
+                datasend(['__ChangemodeReturn', 1])
+            else:
+                datasend(['__ChangemodeReturn', 0])
+            return
     for waiting in waiting_list:
-        if waiting['USERID'] == name:  # 在等待队列，直接改变
+        if waiting!={}and waiting['USERID'] == name:  # 在等待队列，直接改变
             if waiting['chargeMode'] == 0:
                 f = f - 1
                 s = s + 1
@@ -190,32 +266,77 @@ def changemode(name):
             waiting['NO'] = no
             datasend(['__ChangemodeReturn', 1])
             return
-    # 没找到，已经在充电区
+
+# 未测试
+# 改变充电电量
+# 如果在等候区，直接修改。
+# 如果在充电区，停止充电插入等待区。如果等待区满，不停止充电直接返回改变失败
+def chargechange(name,chargeamount):
+    global f
+    global s
+    global waiting_list
+    global billid
     global time
-    for pile in piles:
-        if pile != {} and pile['USERID'] == name:
-            chargemode = pile['chargeMode'] % 1
-            chargeamount = pile['requestCharge'] - (time - pile['startTime']) / 60 * (chargemode % 1 * 23 + 7)
-            if (waiting_list.count() == 6):  # 队列满了
-                datasend(['__ChangemodeReturn', 0])
-                return
-            else:
-                global billid
-                no = ''
-                if chargemode == 0:  # 快充
+    for car in piles:
+        if car!={}and car['USERID']==name:#正在充电
+            car['requestCharge']=chargeamount
+            if len(waiting_list)<6:
+                rm_from_pile(name)
+                if car['chargeMode']==0:
                     f = f + 1
                     no = f'F{f}'
+                    billid = billid + 1
+                    car['Billid']=billid
+                    car['CreateTime']=time
+                    car['chargeMode']=0
+                    car['NO']=no
+                    waiting_list.append(car)
                 else:
                     s = s + 1
                     no = f'S{s}'
-                billid = billid + 1
-                waiting_list.append(pile)
-                pile = {}
-
-            datasend(['__ChangemodeReturn', 1])
+                    billid = billid + 1
+                    car['Billid'] = billid
+                    car['CreateTime'] = time
+                    car['chargeMode'] = 1
+                    car['NO'] = no
+                    waiting_list.append(car)
+                datasend(['__ChangerequestReturn', 1])
+            else:
+                datasend(['__ChangerequestReturn', 0])
             return
-
-
+    for car in pile_waiting:
+        if car!={}and car['USERID']==name:#正在充电
+            car['requestCharge'] = chargeamount
+            if len(waiting_list) < 6:
+                rm_from_pile(name)
+                if car['chargeMode'] == 0:
+                    f = f + 1
+                    no = f'F{f}'
+                    billid = billid + 1
+                    car['Billid'] = billid
+                    car['CreateTime'] = time
+                    car['chargeMode'] = 0
+                    car['NO'] = no
+                    waiting_list.append(car)
+                else:
+                    s = s + 1
+                    no = f'S{s}'
+                    billid = billid + 1
+                    car['Billid'] = billid
+                    car['CreateTime'] = time
+                    car['chargeMode'] = 1
+                    car['NO'] = no
+                    waiting_list.append(car)
+                datasend(['__ChangerequestReturn', 1])
+            else:
+                datasend(['__ChangerequestReturn', 0])
+            return
+    for waiting in waiting_list:
+        if waiting['USERID'] == name:  # 在等待队列，直接改变
+            waiting['requesCharge']=chargeamount
+            datasend(['__ChangerequestReturn', 1])
+            return
+    datasend(['__ChangerequestReturn',0])
 def showdetailedbill(user_id):
     conn = sqlite3.connect('data/charge.db')
     cursor = conn.cursor()
@@ -228,14 +349,16 @@ def showdetailedbill(user_id):
     datasend(output)
     conn.close()
 
+
 # 所有发送信息调用这个函数，data就是要发送的列表和文档里格式一样，不做别的处理
 def datasend(data):
     dataSocket.send(json.dumps(data).encode())
     log.writelines(json.dumps(data))
     log.flush()
 
+
 # 未完成：
-#每隔一秒检查各个队列，充电是否完成、充电区空闲就看看后面有没有车要挪进来等等
+# 每隔一秒检查各个队列，充电是否完成、充电区空闲就看看后面有没有车要挪进来等等
 def timer():
     global fast_pile1
     global fast_pile2
@@ -255,65 +378,47 @@ def timer():
     i = 0
     for pile in fast_pile:
         if pile:  # 桩空闲
-            if i == 0:
-                if not fast_waiting[i]:  # 一号桩有正在等的
-                    fast_pile[i] = False
-                    fast_pile1 = pile_waiting[i]
-                    fast_pile1['startTime'] = time
-                    pile_waiting[i] = {}
-                    fast_waiting[i] = True
-                elif not waiting_queue_fast.empty():
-                    fast_pile[i] = False
-                    fast_pile1 = waiting_queue_fast.get()
-                    waiting_num = waiting_num - 1
-                    fast_pile1['startTime'] = time
-                i = i + 1
-
-            elif i == 1:
-                if not fast_waiting[i]:  # 一号桩有正在等的
-                    fast_pile[i] = False
-                    fast_pile1 = pile_waiting[i]
-                    fast_pile1['startTime'] = time
-                    pile_waiting[i] = {}
-                    fast_waiting[i] = True
-                elif not waiting_queue_fast.empty():
-                    fast_pile[i] = False
-                    fast_pile1 = waiting_queue_fast.get()
-                    waiting_num = waiting_num - 1
-                    fast_pile1['startTime'] = time
-                i = i + 1
+            if not fast_waiting[i]:  # 有正在等的
+                fast_pile[i] = False
+                piles[i] = pile_waiting[i]
+                piles[i]['startTime'] = time
+                piles[i]['servingPile']= i
+                pile_waiting[i] = {}
+                fast_waiting[i] = True
+        i = i + 1
     for pile in slow_pile:
         if pile:  # 桩空闲
-            if i == 2:
-                if not slow_waiting[i]:  # 一号桩有正在等的
-                    slow_pile[i] = False
-                    slow_pile1 = pile_waiting[i]
-                    slow_pile1['startTime'] = time
-                    pile_waiting[i] = {}
-                    fast_waiting[i] = True
-                elif not waiting_queue_fast.empty():
-                    fast_pile[i] = False
-                    fast_pile1 = waiting_queue_fast.get()
-                    waiting_num = waiting_num - 1
-                    fast_pile1['startTime'] = time
-                i = i + 1
+            if not slow_waiting[i - 2]:  # 有正在等的
+                slow_pile[i - 2] = False
+                piles[i] = pile_waiting[i]
+                piles[i]['startTime'] = time
+                piles[i]['servingPile'] = i
+                pile_waiting[i] = {}
+                slow_waiting[i - 2] = True
 
-            elif i == 1:
-                if not fast_waiting[i]:  # 一号桩有正在等的
-                    fast_pile[i] = False
-                    fast_pile1 = pile_waiting[i]
-                    fast_pile1['startTime'] = time
-                    pile_waiting[i] = {}
-                    fast_waiting[i] = True
-                elif not waiting_queue_fast.empty():
-                    fast_pile[i] = False
-                    fast_pile1 = waiting_queue_fast.get()
-                    waiting_num = waiting_num - 1
-                    fast_pile1['startTime'] = time
-                i = i + 1
+        i+=1
 
-
+    i=0
+    for pile in fast_waiting:
+        if pile:  # 充电区等候空闲
+            for car in waiting_list:
+                if car['chargeMode']==0:
+                    fast_waiting[i]=False
+                    pile_waiting[i]=car
+                    waiting_list.remove(car)
+                    break
+        i = i + 1
+    for pile in slow_waiting:
+        if pile:  # 充电区等候空闲
+            for car in waiting_list:
+                if car['chargeMode'] == 1:
+                    slow_waiting[i-2] = False
+                    pile_waiting[i] = car
+                    waiting_list.remove(car)
+                    break
+        i += 1
 timer()
+
 
 # 时钟，每隔十秒time加5（分钟）
 def timer_clock():
@@ -344,22 +449,28 @@ while True:
             name = request[1]
             pwd = request[2]
             isuser = request[3]
+            print(f'{name} register')
             register(name, pwd)
         elif act == '__login':
             name = request[1]
             pwd = request[2]
             isuser = request[3]
+            print(f'{name} login')
             login(name, pwd)
         elif act == '__SubmitRequest':
             content = request[1]
             name = request[2]
             chargemode = content['chargeMode']
             chargeamount = content['requestCharge']
-            print('unfinished')
+            print(f'{name} request')
             chargereq(name, chargemode, chargeamount)
+        elif act=='__Changemode':
+            name=request[1]
+            print(f'{name} change mode')
+            changemode(name)
         elif act == '__ShowDetailedBill':
             user_id = request[1]
-            ShowDetailedBill(user_id)
+            showdetailedbill(user_id)
     except Exception as e:
         log.writelines(f'ERROR: {e}\n')
         log.flush()
