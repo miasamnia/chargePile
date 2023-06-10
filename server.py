@@ -216,15 +216,16 @@ def changemode(name):
             return
 
 
-def ShowDetailedBill(bill_id):
+def showdetailedbill(user_id):
     conn = sqlite3.connect('data/charge.db')
     cursor = conn.cursor()
-    query = f"SELECT * FROM detailed_bill WHERE DetailedBillNum = {bill_id}"
+    query = f"SELECT * FROM detailed_bill WHERE USER_ID = {user_id}"
     cursor.execute(query)
     result = cursor.fetchall()
+    output = []
     for row in result:
-        tosend = ['__ShowDetailedBillReturn', [row]]
-    datasend(tosend)
+        output.append(['__ShowDetailedBillReturn', [row]])
+    datasend(output)
     conn.close()
 
 # 所有发送信息调用这个函数，data就是要发送的列表和文档里格式一样，不做别的处理
@@ -357,8 +358,8 @@ while True:
             print('unfinished')
             chargereq(name, chargemode, chargeamount)
         elif act == '__ShowDetailedBill':
-            billid = request[1]
-            ShowDetailedBill(billid)
+            user_id = request[1]
+            ShowDetailedBill(user_id)
     except Exception as e:
         log.writelines(f'ERROR: {e}\n')
         log.flush()
