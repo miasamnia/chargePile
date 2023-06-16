@@ -97,10 +97,10 @@
    <widget class="QPushButton" name="loginButton">
     <property name="geometry">
      <rect>
-      <x>80</x>
+      <x>130</x>
       <y>120</y>
-      <width>71</width>
-      <height>41</height>
+      <width>161</width>
+      <height>71</height>
      </rect>
     </property>
     <property name="font">
@@ -134,26 +134,6 @@
      <string/>
     </property>
    </widget>
-   <widget class="QPushButton" name="registerButton">
-    <property name="geometry">
-     <rect>
-      <x>270</x>
-      <y>120</y>
-      <width>71</width>
-      <height>41</height>
-     </rect>
-    </property>
-    <property name="font">
-     <font>
-      <pointsize>14</pointsize>
-      <weight>75</weight>
-      <bold>true</bold>
-     </font>
-    </property>
-    <property name="text">
-     <string>注册</string>
-    </property>
-   </widget>
    <zorder>leaderboard</zorder>
    <zorder>in_act</zorder>
    <zorder>in_pwd</zorder>
@@ -161,7 +141,6 @@
    <zorder>password</zorder>
    <zorder>show_info</zorder>
    <zorder>loginButton</zorder>
-   <zorder>registerButton</zorder>
   </widget>
  </widget>
  <resources/>

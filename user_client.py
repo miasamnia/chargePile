@@ -11,7 +11,6 @@ import json
 IP = '127.0.0.1'
 SERVER_PORT = 56789
 BUFLEN = 512
-CDTIME = 60  # 匹配成功一次的cd
 
 
 def datasend(data):
@@ -19,7 +18,6 @@ def datasend(data):
     dataSocket.connect((IP, SERVER_PORT))
     dataSocket.send(json.dumps(data).encode())
     return json.loads(dataSocket.recv(BUFLEN).decode())
-
 
 
 class MainWin(QMainWindow):
