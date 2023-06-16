@@ -1,8 +1,6 @@
 # 关于预计时间、排队时间等等的功能都还没做
-
-
 import os
-import time
+import time as pytime
 from socket import *
 import json
 import sqlite3
@@ -12,7 +10,7 @@ IP = '0.0.0.0'
 PORT = 56789
 BUFLEN = 512
 
-log = open('log/' + time.asctime().replace(':', '_') + '.txt', 'w')
+log = open('log/' + pytime.asctime().replace(':', '_') + '.txt', 'w')
 # cd = open('cd.txt','w')
 
 listenSocket = socket(AF_INET, SOCK_STREAM)
@@ -542,7 +540,7 @@ def getreportform(pilenum):#['__GetreportformReturn', [(1, 1, 0, 2, 0, 1.0, 0.7,
     data_tuple = tuple(pile_info[index])
     data_list=[]
     data_list.append(data_tuple)
-    datasend(['__GetreportformReturn', data_list,int(time.time())])
+    datasend(['__GetreportformReturn', data_list,int(pytime.time())])
 
 
 def waitinginfo():
@@ -595,27 +593,27 @@ def stoppile(pile):
     global fast_waiting
     global piles
     if pile<=2:
-        if fast_pile[i-1]:#空闲，可以停
-            if fast_waiting[i-1]:
-                fast_waiting[i-1]=False
-                fast_pile[i-1]=False
+        if fast_pile[pile-1]:#空闲，可以停
+            if fast_waiting[pile-1]:
+                fast_waiting[pile-1]=False
+                fast_pile[pile-1]=False
                 datasend(['__StopuppileReturn', 0, 1])
                 return
-        elif piles[i-1]=={}:
-            fast_waiting[i-1]=True
-            fast_pile[i-1]=True
+        elif piles[pile-1]=={}:
+            fast_waiting[pile-1]=True
+            fast_pile[pile-1]=True
             datasend(['__StopuppileReturn', 1, 1])
             return
     else:
-        if slow_pile[i-3]:
-            if slow_waiting[i-3]:
-                slow_waiting[i-3]=False
-                slow_pile[i-3]=False
+        if slow_pile[pile-3]:
+            if slow_waiting[pile-3]:
+                slow_waiting[pile-3]=False
+                slow_pile[pile-3]=False
                 datasend(['__StopuppileReturn', 0, 1])
                 return
-        elif piles[i-3]=={}:
-            slow_waiting[i-3]=True
-            slow_pile[i-3]=True
+        elif piles[pile-3]=={}:
+            slow_waiting[pile-3]=True
+            slow_pile[pile-3]=True
             datasend(['__StopuppileReturn', 1, 1])
             return
     datasend(['__StopuppileReturn', 0, 0])
@@ -627,25 +625,25 @@ def pilestatus(pile):
     global pile_info
     inf={'status':0,'times':1,'elc':1.0,'type':''}
     if pile <=2:
-        if fast_pile[i-1]:
+        if fast_pile[pile-1]:
             inf['status']=0
-        elif piles[i-1]=={}:#不空闲但是没有正在充电表示关机了
+        elif piles[pile-1]=={}:#不空闲但是没有正在充电表示关机了
             inf['status']=3
         else:
             inf['status']=1
         inf['type']='快速'
     else:
-        if slow_pile[i-3]:
+        if slow_pile[pile-3]:
             inf['status']=0
-        elif piles[i-1]=={}:#不空闲但是没有正在充电表示关机了
+        elif piles[pile-1]=={}:#不空闲但是没有正在充电表示关机了
             inf['status']=3
         else:
             inf['status']=1
         inf['type']='慢速'
 
-    inf['times']=pile_info[1]
-    inf['elc']=pile_info[5]
-
+    inf['times']=pile_info[pile-1][1]
+    inf['elc']=pile_info[pile-1][5]
+    datasend(['__ShowpileReturn', inf, pile])
 
 
 # 所有发送信息调用这个函数，data就是要发送的列表和文档里格式一样，不做别的处理
@@ -844,6 +842,7 @@ while True:
             stoppile(request[1])
         elif act=='__Showpile':
             pilestatus(request[1])
+
     except Exception as e:
         log.writelines(f'ERROR: {e}\n')
         log.flush()
