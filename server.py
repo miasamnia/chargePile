@@ -16,7 +16,7 @@ listenSocket = socket(AF_INET, SOCK_STREAM)
 listenSocket.bind((IP, PORT))
 listenSocket.listen(5)
 
-pile_info = []
+pile_info = []#充电桩号从1开始
 for pile in os.listdir('data/piles'):
     info = open('data/piles/' + pile, 'r+')
     data = info.read().strip('(').strip(')').split(',')
