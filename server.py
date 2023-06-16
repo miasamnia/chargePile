@@ -525,6 +525,12 @@ def stopcharging(name):
         i += 1
     datasend(['__SubmitRequestReturn', 0, []])
 
+# 未测试
+# 查充电桩数量（列表元素数量）
+def getpilennum():
+    pilenum = len(fast_pile) + len(slow_pile)
+    datasend(['__GetPilenReturn', pilenum])
+
 
 # 所有发送信息调用这个函数，data就是要发送的列表和文档里格式一样，不做别的处理
 def datasend(data):
@@ -706,6 +712,8 @@ while True:
         elif act == '__GetRIinfo':
             name = request[1]
             showcharginginfo(name)
+        elif act == '__GetPilen':
+            getpilennum()
         elif act == '__StopCharge':
             name = request[1]
             stopcharging(name)
