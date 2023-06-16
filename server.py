@@ -1,3 +1,6 @@
+# 关于预计时间、排队时间等等的功能都还没做
+
+
 import os
 import time
 from socket import *
@@ -16,7 +19,7 @@ listenSocket = socket(AF_INET, SOCK_STREAM)
 listenSocket.bind((IP, PORT))
 listenSocket.listen(5)
 
-pile_info = []#充电桩号从1开始
+pile_info = []  # 充电桩号从1开始
 for pile in os.listdir('data/piles'):
     info = open('data/piles/' + pile, 'r+')
     data = info.read().strip('(').strip(')').split(',')
@@ -525,6 +528,7 @@ def stopcharging(name):
         i += 1
     datasend(['__SubmitRequestReturn', 0, []])
 
+
 # 未测试
 # 查充电桩数量（列表元素数量）
 def getpilennum():
@@ -539,6 +543,109 @@ def getreportform(pilenum):#['__GetreportformReturn', [(1, 1, 0, 2, 0, 1.0, 0.7,
     data_list=[]
     data_list.append(data_tuple)
     datasend(['__GetreportformReturn', data_list,int(time.time())])
+
+
+def waitinginfo():
+    f = []
+    s = []
+    for car in waiting_list:
+        if car != {}:
+            if car['NO'][0] == 'F':
+                f.append(car['NO'])
+            else:
+                s.append(car['NO'])
+    datasend(['__GetwaitinginfoReturn', [f, s]])
+
+
+def servingcar(pile):
+    cars = []
+    global piles
+    global pile_waiting
+    global fast_pile
+    global slow_pile
+    global fast_waiting
+    global slow_waiting
+    global time
+    if pile <= 2:
+        if fast_pile[pile - 1]:  # 充电桩空闲，也就是说根本没有车
+            datasend(['__ShowcarsReturn', [[0]]])
+        else:  # 有车正在充电
+            cars.append([1, piles[pile - 1]['USERID'], 1, piles[pile - 1]['requestCharge'],
+                         (time - piles[pile - 1]['CreateTime']) / 60, (time - piles[pile - 1]['CreateTime']) % 60, 0,
+                         0])
+            if not fast_waiting[pile-1]:
+                cars.append([1,pile_waiting[pile - 1]['USERID'], 1, pile_waiting[pile - 1]['requestCharge'],
+                         (time - pile_waiting[pile - 1]['CreateTime']) / 60, (time - pile_waiting[pile - 1]['CreateTime']) % 60, 0,
+                         0])
+    else:
+        if slow_pile[pile - 3]:  # 充电桩空闲，也就是说根本没有车
+            datasend(['__ShowcarsReturn', [[0]]])
+        else:  # 有车正在充电
+            cars.append([1, piles[pile - 1]['USERID'], 1, piles[pile - 1]['requestCharge'],
+                         (time - piles[pile - 1]['CreateTime']) / 60, (time - piles[pile - 1]['CreateTime']) % 60, 0,
+                         0])
+        if not slow_waiting[pile - 3]:
+            cars.append([1, pile_waiting[pile - 1]['USERID'], 1, pile_waiting[pile - 1]['requestCharge'],
+                         (time - pile_waiting[pile - 1]['CreateTime']) / 60,
+                         (time - pile_waiting[pile - 1]['CreateTime']) % 60, 0,
+                         0])
+
+def stoppile(pile):
+    global fast_pile
+    global fast_waiting
+    global piles
+    if pile<=2:
+        if fast_pile[i-1]:#空闲，可以停
+            if fast_waiting[i-1]:
+                fast_waiting[i-1]=False
+                fast_pile[i-1]=False
+                datasend(['__StopuppileReturn', 0, 1])
+                return
+        elif piles[i-1]=={}:
+            fast_waiting[i-1]=True
+            fast_pile[i-1]=True
+            datasend(['__StopuppileReturn', 1, 1])
+            return
+    else:
+        if slow_pile[i-3]:
+            if slow_waiting[i-3]:
+                slow_waiting[i-3]=False
+                slow_pile[i-3]=False
+                datasend(['__StopuppileReturn', 0, 1])
+                return
+        elif piles[i-3]=={}:
+            slow_waiting[i-3]=True
+            slow_pile[i-3]=True
+            datasend(['__StopuppileReturn', 1, 1])
+            return
+    datasend(['__StopuppileReturn', 0, 0])
+
+def pilestatus(pile):
+    global fast_pile
+    global slow_pile
+    global piles
+    global pile_info
+    inf={'status':0,'times':1,'elc':1.0,'type':''}
+    if pile <=2:
+        if fast_pile[i-1]:
+            inf['status']=0
+        elif piles[i-1]=={}:#不空闲但是没有正在充电表示关机了
+            inf['status']=3
+        else:
+            inf['status']=1
+        inf['type']='快速'
+    else:
+        if slow_pile[i-3]:
+            inf['status']=0
+        elif piles[i-1]=={}:#不空闲但是没有正在充电表示关机了
+            inf['status']=3
+        else:
+            inf['status']=1
+        inf['type']='慢速'
+
+    inf['times']=pile_info[1]
+    inf['elc']=pile_info[5]
+
 
 
 # 所有发送信息调用这个函数，data就是要发送的列表和文档里格式一样，不做别的处理
@@ -729,6 +836,14 @@ while True:
         elif act == '__StopCharge':
             name = request[1]
             stopcharging(name)
+        elif act == '__Getwaitinginfo':
+            waitinginfo()
+        elif act == '__Showcars':
+            servingcar(request[1])
+        elif act=='__Stopuppile':
+            stoppile(request[1])
+        elif act=='__Showpile':
+            pilestatus(request[1])
     except Exception as e:
         log.writelines(f'ERROR: {e}\n')
         log.flush()
