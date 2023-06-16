@@ -532,6 +532,15 @@ def getpilennum():
     datasend(['__GetPilenReturn', pilenum])
 
 
+# 对查询某个充电桩报表信息请求的响应
+def getreportform(pilenum):#['__GetreportformReturn', [(1, 1, 0, 2, 0, 1.0, 0.7, 0.8)], 1684541400]
+    index = pilenum - 1
+    data_tuple = tuple(pile_info[index])
+    data_list=[]
+    data_list.append(data_tuple)
+    datasend(['__GetreportformReturn', data_list,int(time.time())])
+
+
 # 所有发送信息调用这个函数，data就是要发送的列表和文档里格式一样，不做别的处理
 def datasend(data):
     dataSocket.send(json.dumps(data).encode())
@@ -714,6 +723,9 @@ while True:
             showcharginginfo(name)
         elif act == '__GetPilen':
             getpilennum()
+        elif act == '__Getreportform':
+            pilenum = request[1]
+            getreportform(pilenum)
         elif act == '__StopCharge':
             name = request[1]
             stopcharging(name)
